@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hazik Studio</title>
+    <style>
+        /* Overall background and font style */
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(45deg, #008000, #000000); /* Green and Black gradient */
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+
+        /* Splash Screen Style */
+        #splash-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        #splash-text {
+            font-size: 3rem;
+            color: white;
+            text-align: center;
+        }
+
+        /* Main content container */
+        .container {
+            text-align: center;
+            display: none; /* Hide content initially */
+        }
+
+        /* Form inputs and buttons */
+        input, button {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 1rem;
+        }
+
+        /* Button color */
+        button {
+            background-color: #008000;
+            color: white;
+        }
+
+        /* List of uploaded games */
+        #game-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        /* For displaying the downloaded game button */
+        #download-game {
+            margin-top: 10px;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <div id="splash-text">Made by Hazik Studio</div>
+    </div>
+
+    <!-- Main App Content -->
+    <div class="container">
+        <h1>Hazik Studio</h1>
+        <h3>Upload Game</h3>
+        <div id="game-form">
+            <input type="text" id="game-name" placeholder="Game Name" required>
+            <input type="file" id="game-logo" accept="image/*" required>
+            <input type="text" id="game-link" placeholder="Game Download Link" required>
+            <button id="upload-game">Upload Game</button>
+        </div>
+        <button id="download-game">Download Game Data</button>
+
+        <h3>Upload Game Data File (Play Game)</h3>
+        <input type="file" id="file-upload" />
+        
+        <div id="play-game" style="display: none;">
+            <h3>Play Uploaded Game</h3>
+            <img id="game-logo-preview" width="100" alt="Game Logo" />
+            <h4 id="game-name-preview"></h4>
+            <p><a id="game-link-preview" target="_blank">Download Game</a></p>
+        </div>
+
+        <h3>Uploaded Games</h3>
+        <ul id="game-list"></ul>
+    </div>
+
+    <script>
+        // Function to hide the splash screen and show the main content
+        function showAppContent() {
+            document.getElementById('splash-screen').style.display = 'none'; // Hide the splash screen
+            document.querySelector('.container').style.display = 'block'; // Show the main content
+        }
+
+        // Wait for 3 seconds before showing the app content
+        setTimeout(showAppContent, 3000);
+
+        // Function to display the games from localStorage
+        function displayGames() {
+            const gameList = document.getElementById('game-list');
+            gameList.innerHTML = ''; // Clear previous list
+
+            const games = JSON.parse(localStorage.getItem('games')) || [];
+
+            games.forEach((game, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <img src="${game.logo}" alt="${game.name} Logo" width="50">
+                    <div>
+                        <h4>${game.name}</h4>
+                        <p><a href="${game.link}" target="_blank">Download</a></p>
+                    </div>
+                `;
+                gameList.appendChild(li);
+            });
+        }
+
+        // Function to upload a game and store in localStorage
+        document.getElementById('upload-game').addEventListener('click', () => {
+            const gameName = document.getElementById('game-name').value;
+            const gameLogoFile = document.getElementById('game-logo').files[0];
+            const gameLink = document.getElementById('game-link').value;
+
+            if (!gameName || !gameLogoFile || !gameLink) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const gameData = {
+                    name: gameName,
+                    logo: e.target.result,  // Store image as Base64
+                    link: gameLink
+                };
+
+                // Save game data in localStorage
+                const games = JSON.parse(localStorage.getItem('games')) || [];
+                games.push(gameData);
+                localStorage.setItem('games', JSON.stringify(games));
+
+                displayGames();
+                alert('Game uploaded successfully!');
+                
+                // Show the download button after game upload
+                document.getElementById('download-game').style.display = 'block';
+            };
+            reader.readAsDataURL(gameLogoFile);  // Convert image to Base64 string
+        });
+
+        // Function to download the game data as a single .data file (with assets bundled)
+        document.getElementById('download-game').addEventListener('click', () => {
+            const games = JSON.parse(localStorage.getItem('games')) || [];
+
+            if (games.length === 0) {
+                alert('No games to download!');
+                return;
+            }
+
+            const gameData = JSON.stringify(games);
+            const blob = new Blob([gameData], { type: 'application/json' });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'gameuploaded.data';  // Name of the downloadable file
+            a.click();
+        });
+
+        // Function to upload and parse the game data file and show the game in "Play Game" section
+        document.getElementById('file-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const gameData = JSON.parse(event.target.result);
+                
+                // For now, we assume there is one game in the uploaded file.
+                if (gameData.length > 0) {
+                    const game = gameData[0]; // Assuming the file contains one game
+
+                    // Show the game details in the Play Game section
+                    document.getElementById('game-name-preview').innerText = game.name;
+                    document.getElementById('game-logo-preview').src = game.logo;
+                    document.getElementById('game-link-preview').href = game.link;
+                    document.getElementById('game-link-preview').innerText = 'Download Game';
+
+                    // Show the Play Game section
+                    document.getElementById('play-game').style.display = 'block';
+                }
+            };
+            reader.readAsText(file);  // Read the uploaded .data file
+        });
+
+        // Initialize the app by displaying games from localStorage
+        displayGames();
+    </script>
+</body>
+</html>
